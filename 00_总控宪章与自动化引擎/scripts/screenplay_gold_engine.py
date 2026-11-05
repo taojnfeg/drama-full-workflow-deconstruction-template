@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-通用影视全流程专业文学剧本与横向8列导演分镜生成及8道断言质检引擎 (screenplay_gold_engine.py)
-- 严格执行文学剧本全部 8 道硬性断言（零表格、零顶部导读框、零△、零〔〕、零镜头术语与占位括号、标准场标题正则、标准片尾标记、对白与微动作严格交替）
-- 支持横向宽幅 8 列专业导演分镜脚本表1（分场预计时长与镜数）与表2（逐镜单镜时长加总）100% 精确算术核验
+通用影视全流程专业文学剧本与横向8列导演分镜生成及质检引擎 (screenplay_gold_engine.py)
+- 严格执行文学剧本全部 8 道硬性断言（支持单集剧本与全集剧本合订总本标题格式）
+- 严格执行横向宽幅 8 列导演分镜脚本算术校验 + 单镜三维物理时间预算校验（起幅运镜+语境发声+气口余波，单向近景一镜一轮对白，综合有效语速 <= 4.2字/秒）
 """
 import re, docx
 from docx.shared import Inches, Pt, RGBColor
@@ -24,11 +24,12 @@ STORYBOARD_8_WIDTHS = [0.65, 0.65, 0.65, 0.70, 1.45, 2.75, 1.85, 1.65]
 
 SCENE_HEADER_RE = re.compile(r"^\d+-\d+\u3000(?:内|外|外/内|内/外)\u3000.+ — (?:日|夜|晨|昏|黄昏|拂晓)$")
 FORBIDDEN_SCRIPT_PLACEHOLDERS = [
-    "（示例", "（情感填充物", "【角色名】", "【具体", "推镜头", "拉镜头", "摇镜头", "移镜头", "特写镜头"
+    "（示例", "（情感填充物", "【角色名】", "【具体", "推镜头", "拉镜头", "摇镜头", "移镜头", "特写镜头",
+    "生硬道具占位符", "生硬概念括注"
 ]
 
 def verify_screenplay_8_assertions(doc_path):
-    """对单集或总本文学剧本执行全部 8 道工业级格式与台词微动作交替硬断言"""
+    """对单集剧本或全集剧本总本执行全部 8 道工业级格式与台词微动作交替硬断言"""
     doc = docx.Document(doc_path)
     # 断言1：零表格
     assert len(doc.tables) == 0, f"[断言1失败] 文学剧本严禁包含任何表格: {doc_path}"
@@ -37,9 +38,11 @@ def verify_screenplay_8_assertions(doc_path):
     assert len(paras) >= 10, f"[剧本内容过短] {doc_path}"
     full_txt = "\n".join(paras)
 
-    # 断言2：零顶部导读框（前3段必须直接为《剧名》、第X集标题与第1场标准场标题）
+    # 断言2：零顶部导读框（前3段必须直接为《剧名》、剧本标题与第1场标准场标题）
     assert paras[0].startswith("《") and paras[0].endswith("》"), f"[断言2失败] 首段必须为标准剧名而非导读框: {paras[0]}"
-    assert "专业文学剧本" in paras[1], f"[断言2失败] 第二段必须为剧本集标题: {paras[1]}"
+    assert "专业文学剧本" in paras[1], f"[断言2失败] 第二段必须为标准剧本标题: {paras[1]}"
+    if "全集专业文学剧本总本" in doc_path:
+        assert not paras[1].startswith("第01集"), f"[断言2失败] 全集剧本总本第二段严禁误标为单集『第01集』: {paras[1]}"
     assert SCENE_HEADER_RE.match(paras[2]), f"[断言2失败] 第三段必须直接进入第一场标题，严禁插入顶部导读框: {paras[2]}"
 
     # 断言3：零 △ 符号
@@ -48,9 +51,9 @@ def verify_screenplay_8_assertions(doc_path):
     # 断言4：零 〔〕 方括号
     assert "〔" not in full_txt and "〕" not in full_txt, f"[断言4失败] 文学剧本严禁使用 〔〕 方括号: {doc_path}"
 
-    # 断言5：零镜头术语与零说明性占位括号
+    # 断言5：零镜头术语与零非剧本文本说明括注
     for bad_ph in FORBIDDEN_SCRIPT_PLACEHOLDERS:
-        assert bad_ph not in full_txt, f"[断言5失败] 文学剧本包含违规占位符或镜头术语 '{bad_ph}': {doc_path}"
+        assert bad_ph not in full_txt, f"[断言5失败] 文学剧本包含违规说明括注或镜头术语 '{bad_ph}': {doc_path}"
 
     # 断言6：标准场标题正则校验及紧随人物行校验
     scene_cnt = 0
@@ -59,12 +62,12 @@ def verify_screenplay_8_assertions(doc_path):
             assert SCENE_HEADER_RE.match(line), f"[断言6失败] 场标题格式不合规: {line}"
             assert idx + 1 < len(paras) and paras[idx + 1].startswith("人物："), f"[断言6失败] 场标题后缺少标准人物行: {line}"
             scene_cnt += 1
-    assert scene_cnt >= 3, f"[断言6失败] 文学剧本有效场次数不足3场: {scene_cnt}"
+    assert scene_cnt >= 4, f"[断言6失败] 文学剧本有效场次数不足4场: {scene_cnt}"
 
     # 断言7：标准片尾标记
     assert "*开始片尾音乐：" in full_txt and "切至黑屏，片尾" in full_txt, f"[断言7失败] 缺少标准片尾标记: {doc_path}"
 
-    # 断言8：校验台词与微动作交替律（禁止连续两段纯对白无动作间隔）
+    # 断言8：校验一句对白＋一段可视微动作严格交替律（禁止连续两段纯对白无动作间隔）
     consec_dialogue = 0
     for p in doc.paragraphs:
         t = p.text.strip()
@@ -79,7 +82,11 @@ def verify_screenplay_8_assertions(doc_path):
     return True
 
 def verify_storyboard_math(doc_path):
-    """校验横向8列导演分镜脚本：表1分场预计时长、镜数与表2逐镜单镜秒数加总 100% 精确相等"""
+    """
+    校验横向8列导演分镜脚本：
+    1) 表1分场预计时长、镜数与表2逐镜单镜秒数加总 100% 精确相等（误差 < 0.01s）
+    2) 单镜三维物理时间预算校验：一镜最多1轮主发声（长镜头最多2轮），单镜纯发声汉字数÷单镜秒数 <= 4.2 字/秒，且预留起落幅动作气口余量
+    """
     doc = docx.Document(doc_path)
     assert len(doc.tables) >= 2, f"[分镜表缺失] {doc_path}"
     t_overview = doc.tables[0]
@@ -104,6 +111,7 @@ def verify_storyboard_math(doc_path):
     for ri in range(1, len(t_shots.rows)):
         shot_id = t_shots.rows[ri].cells[0].text.strip()
         dur_str = t_shots.rows[ri].cells[1].text.strip()
+        dial_str = t_shots.rows[ri].cells[6].text.strip()
         m_sid = re.match(r"^S(\d+)-(\d+)", shot_id)
         assert m_sid, f"[分镜表2镜号格式错误] {shot_id}"
         sc_num = int(m_sid.group(1))
@@ -113,6 +121,18 @@ def verify_storyboard_math(doc_path):
         sec_val = float(m_d.group(1))
         declared_scenes[sc_num]["actual_cnt"] += 1
         declared_scenes[sc_num]["actual_sec"] += sec_val
+
+        # Physical Speech Rate & Dialogue Turn Gate
+        lines = [ln.strip() for ln in dial_str.split("\n") if ln.strip() and not ln.strip().startswith("（")]
+        turns = len(lines)
+        assert turns <= 1, f"[分镜单镜对话轮次超限] {shot_id} 塞入 {turns} 轮对话，违反单镜一对一拆镜原则"
+        spoken_chars = sum(len(re.sub(r"^[^：:]+[：:]", "", ln)) for ln in lines)
+        if spoken_chars > 0:
+            rate = spoken_chars / sec_val
+            assert rate <= 4.2, (
+                f"[分镜物理语速超限] {shot_id} 时长 {sec_val}s 塞入 {spoken_chars} 字台词 "
+                f"(每秒 {rate:.2f} 字 > 4.2 字/秒上限)"
+            )
 
     for sc_num, info in declared_scenes.items():
         assert info["exp_cnt"] == info["actual_cnt"], (
