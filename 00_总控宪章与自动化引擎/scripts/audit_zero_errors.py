@@ -2,15 +2,15 @@
 """
 通用影视全流程母版库十维零误差自动化终检门禁 (audit_zero_errors.py)
 涵盖：
-1. 26个标准文件完备性、主库文件唯一性与 04_按集完整交付包 100% 镜像同步校验（零删场分裂）
+1. 26个标准文件完备性与全库 26 个文件 MD5 哈希两两唯一校验（零字节级重复文件）
 2. 文学剧本全部8道硬断言校验（verify_screenplay_8_assertions）
-3. 横向8列导演分镜脚本算术对齐 + 单镜三维物理时间预算（一镜一轮对白、语速<=4.2字/秒）校验
-4. 动态跨文档角色、主场景与核心道具同源一致性校验（自动从剧本提取角色，支持任意新剧无缝切换，零硬编码人名绑定）
-5. [07] 02_完整合订本与 [01]—[06] 分册的段落、章节及表格行数 100% AST 同步校验
-6. 《02_总论》九编20表完备性、分集大纲零复制粘贴雷同与 EP01—EP12 连续编号校验
+3. 横向8列导演分镜脚本视听规格完备性校验（verify_storyboard_8cols，不在前期硬性锁死单镜秒数）
+4. 动态跨文档角色、场景与核心道具同源一致性校验（自动从剧本提取登场角色，零硬编码人名）
+5. 目录编号 00_—08_、《03_单集阐述》表1—表4对齐与 [07] 合订本 100% AST 同步校验
+6. 《02_总论》九编29表完备性、EP01—EP12 一集一表（12张独立5行子表）与跨集零复制雷同校验
 7. 《06_核心场景一景一档》五章制、第2章四小节+3列轴线表与第4章纪实正文饱满度校验
-8. 《05_核心人物一人一档》六章制与第4章按集推进完整叙事传记骨架校验
-9. 核心创作心法深层机制覆盖、零事后拉片词、零特定IP（含《三人行》与《暗格刻度》）私有设定绑定、零内部黑话代号校验
+8. 《05_核心人物一人一档》六章制、第4章按集推进完整叙事传记与零填空占位符（【角色名】/________）校验
+9. 核心创作心法深层机制覆盖、零事后拉片词、零特定IP（含《三人行》与虚构古建木作戏）私有设定残留校验
 10. 全量繁体字拦截库（零繁体字混杂）、零单元格重复句与零数据行 w:cantSplit 跨页截断隐患校验
 """
 import os, sys, re, hashlib, docx
@@ -18,7 +18,7 @@ from docx.oxml.ns import qn
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.insert(0, os.path.join(BASE_DIR, "00_总控宪章与自动化引擎/scripts"))
-from screenplay_gold_engine import verify_screenplay_8_assertions, verify_storyboard_math
+from screenplay_gold_engine import verify_screenplay_8_assertions, verify_storyboard_8cols
 
 EXPECTED_FILES = [
     '00_总控宪章与自动化引擎/00_《影视剧集从0到1全流程总控导航宪章（轻量路由入口）》.docx',
@@ -49,15 +49,6 @@ EXPECTED_FILES = [
     'README.md'
 ]
 
-DELIVERY_MIRROR_PAIRS = {
-    '01_全流程剧集开发标准母版库/04_按集全套完整交付包（一集一档：本集剧本+本集分镜+本集阐述）/EP01_第一集《单集片名》完整交付包/01_EP01_《剧名》第一集《单集片名》专业文学剧本.docx':
-        '01_全流程剧集开发标准母版库/01_专业文学剧本/EP01_《剧名》第一集《单集片名》专业文学剧本（高信息量台词与微动作交替标准母版）.docx',
-    '01_全流程剧集开发标准母版库/04_按集全套完整交付包（一集一档：本集剧本+本集分镜+本集阐述）/EP01_第一集《单集片名》完整交付包/02_EP01_《剧名》第一集《单集片名》导演分镜脚本与视听调度本（横向宽幅8列）.docx':
-        '01_全流程剧集开发标准母版库/02_导演分镜脚本与视听调度本/EP01_《剧名》第一集《单集片名》导演分镜脚本与视听调度本（横向宽幅8列标准母版）.docx',
-    '01_全流程剧集开发标准母版库/04_按集全套完整交付包（一集一档：本集剧本+本集分镜+本集阐述）/EP01_第一集《单集片名》完整交付包/03_EP01_《剧名》第一集《单集片名》剧作结构、信息密度节奏与视听阐述.docx':
-        '01_全流程剧集开发标准母版库/03_剧作结构、信息密度节奏与视听阐述/EP01_《剧名》第一集《单集片名》剧作结构、信息密度节奏与视听阐述（标准母版）.docx',
-}
-
 FORBIDDEN_PULL_AND_TYPOS = [
     "拉片", "视听拉片本", "拉片核验", "02_过程库", "16宫格", "全人物正面面部核验",
     "必须经原片核实", "穿插原片真实", "原片中的呈现位置", "视听拉片参数表",
@@ -68,7 +59,8 @@ FORBIDDEN_PULL_AND_TYPOS = [
     "05_场景", "06_服化道", "07_宣发",
     "旧版已废止分册名", "旧版错位人物目录号", "旧版错位场景目录号", "旧版错位服化道目录号",
     "旧版错位宣发目录号", "旧式事后拆解", "重复词病句", "生硬替换词", "机械替换词病句",
-    "生硬概念括注", "生硬道具占位符", "分食一块热食"
+    "生硬概念括注", "生硬道具占位符", "________", "【角色名】", "人物02", "人物03",
+    "单镜时长", "预计时长"
 ]
 
 FORBIDDEN_IP_HARDCODES = [
@@ -81,20 +73,22 @@ FORBIDDEN_IP_HARDCODES = [
     "有轨电车", "3200K", "5600K", "6000K", "保温桶", "塔可夫斯基", "烟头", "大铁锤", "垃圾桶",
     "既有印记消失", "唯一物理信标面临拆迁", "后人的干预恰恰促成先人发明", "注册名字卡系统漏洞",
     "你选的路，问过我想要吗", "谁在雪巷晕倒", "谁在岸边救人", "黄铜外壳机械怀表", "牛角扣大衣",
-    "暗格刻度", "林深", "周明远", "苏怀瑾", "赵泰来", "青云坊", "鲁班尺", "鲁班锁匣", "天心斗拱", "QY-04-B"
+    "暗格刻度", "林深", "周明远", "苏怀瑾", "赵泰来", "青云坊", "鲁班尺", "鲁班锁匣", "天心斗拱", "QY-04-B",
+    "生桐油", "燕尾榫", "榫槽", "榫卯", "老楠木", "六合", "天枢", "毫厘必究", "透气贴", "尺神经",
+    "老榆木", "雕花木", "砖雕", "营造底簿", "营造法式", "暗卯", "三十六卯口", "平口凿", "凿痕",
+    "松烟墨", "旧织机", "木料库", "陈皮姜茶"
 ]
 
-# Strictly Traditional-only characters (never used in standard Simplified Chinese)
 FORBIDDEN_TRADITIONAL_CHARS = set(
     "與結構徹傷間發見開關門車馬鳥語論議護驗實證長東兩無專業學體係統電報紙張書寫讀聽覺頭臉頸時鐘樓層號條塊雙對從來後進還處變動靜氣風雲觀視鏡劇節點線網"
-    "傳統標準備選題類環場畫聲樂燈飾裝導編製審檢錯邏間關係數據庫檔總綱領冊頁欄項應當須嚴絕斷續連貫轉軸廣"
+    "傳統標準備選題類環場畫聲樂燈飾裝導編製審檢錯邏關係數據庫檔總綱領冊頁欄項應當須嚴絕斷續連貫轉軸廣湊"
 )
 
 REQUIRED_METHODOLOGY_TERMS = [
     "感动自己", "克制生悲悯", "情感蓄水池", "情感填充物", "骨肉互生",
     "主心骨", "游离", "持续让观众关心", "信息密度", "三变测试",
     "三层认知差漏斗", "猎奇", "新鲜度", "我没见过这样的东西", "四维认知破壁",
-    "12 种实战工程武器", "声音桥", "三维物理时间预算"
+    "12 种实战工程武器", "声音桥"
 ]
 
 def main():
@@ -106,7 +100,7 @@ def main():
         for f in files:
             actual_files.append(os.path.relpath(os.path.join(r, f), BASE_DIR))
 
-    # Gate 1: File completeness, Delivery Package exact mirroring, & Non-mirror MD5 uniqueness
+    # Gate 1: All 26 files present & all 26 files have unique MD5 hashes
     for ef in EXPECTED_FILES:
         if ef not in actual_files:
             errors.append(f"[缺失标准文件] {ef}")
@@ -114,24 +108,15 @@ def main():
         if af not in EXPECTED_FILES:
             errors.append(f"[多余未登记文件] {af}")
 
-    for pkg_p, main_p in DELIVERY_MIRROR_PAIRS.items():
-        fp1 = os.path.join(BASE_DIR, pkg_p)
-        fp2 = os.path.join(BASE_DIR, main_p)
-        if os.path.exists(fp1) and os.path.exists(fp2):
-            if hashlib.md5(open(fp1, "rb").read()).hexdigest() != hashlib.md5(open(fp2, "rb").read()).hexdigest():
-                errors.append(f"[交付包与主库分裂] {pkg_p} 与 {main_p} 内容不一致")
-
     md5_map = {}
     for rel_p in sorted(actual_files):
-        if rel_p in DELIVERY_MIRROR_PAIRS:
-            continue
         full_p = os.path.join(BASE_DIR, rel_p)
         h = hashlib.md5(open(full_p, "rb").read()).hexdigest()
         if h in md5_map:
-            errors.append(f"[非镜像文件100%重复] {rel_p} 与 {md5_map[h]} MD5完全相同 ({h})")
+            errors.append(f"[字节级100%重复文件] {rel_p} 与 {md5_map[h]} MD5完全相同 ({h})")
         md5_map[h] = rel_p
 
-    # Gate 4 Prep: Dynamically extract character slots from EP01 screenplay (no hardcoded names!)
+    # Gate 4 Prep: Dynamically extract character roles from EP01 screenplay
     ep01_sp_path = os.path.join(BASE_DIR, '01_全流程剧集开发标准母版库/01_专业文学剧本/EP01_《剧名》第一集《单集片名》专业文学剧本（高信息量台词与微动作交替标准母版）.docx')
     dynamic_chars = set()
     if os.path.exists(ep01_sp_path):
@@ -194,19 +179,33 @@ def main():
                 except Exception as ex:
                     errors.append(str(ex))
 
-            # Gate 3: Storyboard 8 columns, duration/shot math & physical speech rate
+            # Gate 3: Storyboard 8 columns structure
             if "02_导演分镜脚本与视听调度本/" in rel_p or "02_EP01_" in rel_p:
                 try:
-                    verify_storyboard_math(full_p)
+                    verify_storyboard_8cols(full_p)
                 except Exception as ex:
                     errors.append(str(ex))
 
-            # Gate 6: 02_总论 completeness & non-duplicated episode outlines
+            # Gate 6: 02_总论 29 tables & EP01..EP12 independent 5-row sub-tables with 0 duplication
             if "02_《剧名》世界观设定" in rel_p:
-                if len(d.tables) < 18:
-                    errors.append(f"[02_总论表格数量不足] 仅 {len(d.tables)} 张表，要求 >= 18 张完整母版表")
-                if "■ 第8集" in txt:
-                    errors.append("[02_总论分集编号断裂] 出现『■ 第8集』畸变编号")
+                if len(d.tables) < 27:
+                    errors.append(f"[02_总论表格数量不足] 仅 {len(d.tables)} 张表，要求包含EP01—EP12全部独立子表（>=27张表）")
+                ep_subtables = {}
+                for tb in d.tables:
+                    if len(tb.rows) == 6 and len(tb.columns) == 2:
+                        hdr = tb.rows[0].cells[1].text.strip()
+                        m_ep = re.match(r"^(EP\d{2})", hdr)
+                        if m_ep:
+                            ep_code = m_ep.group(1)
+                            body_str = "\n".join(r.cells[1].text.strip() for r in tb.rows[1:])
+                            ep_subtables[ep_code] = body_str
+                if len(ep_subtables) < 12:
+                    errors.append(f"[02_总论分集独立子表不足12集] 仅找到 {sorted(ep_subtables.keys())}")
+                seen_ep_bodies = {}
+                for ep_k, ep_v in ep_subtables.items():
+                    if ep_v in seen_ep_bodies:
+                        errors.append(f"[02_总论分集大纲复制粘贴雷同] {ep_k} 与 {seen_ep_bodies[ep_v]} 内容雷同")
+                    seen_ep_bodies[ep_v] = ep_k
 
             # Gate 7: Scene archive 5 chapters, 3-col axis table & rich Ch4
             if "06_核心场景一景一档/" in rel_p:
@@ -214,11 +213,11 @@ def main():
                 if ch_cnt != 5 or len(d.tables[1].columns) != 3 or len(txt) < 2800:
                     errors.append(f"[场景档未达五章制或3列轴线表标准] {rel_p}")
 
-            # Gate 8: Character archive 6 chapters & rich Ch4 structure
+            # Gate 8: Character archive 6 chapters & rich Ch4 biography without placeholders
             if "05_核心人物一人一档/" in rel_p:
                 ch_cnt = sum(1 for p in d.paragraphs if re.match(r"^第[一二三四五六]章", p.text.strip()))
-                if ch_cnt != 6 or len(txt) < 3800:
-                    errors.append(f"[人物档未达六章制标准] {rel_p}")
+                if ch_cnt != 6 or "【角色名】" in txt or "________" in txt or len(txt) < 3800:
+                    errors.append(f"[人物档未达六章制或存在填空占位符] {rel_p}")
 
             # Gate 4: Dynamic character consistency across screenplay, storyboard, statement, and costume table
             if any(k in rel_p for k in ["01_专业文学剧本/", "02_导演分镜脚本", "03_剧作结构", "07_服化道统筹"]):
@@ -230,14 +229,14 @@ def main():
 
         all_corpus_text += "\n" + txt
 
-        # Gate 9 & 10: Forbidden pull jargon, numbering offsets, IP clones (including 暗格刻度!), traditional chars
+        # Gate 9 & 10: Forbidden pull jargon, numbering offsets, IP clones, traditional chars
         if rel_p not in ("00_总控宪章与自动化引擎/scripts/audit_zero_errors.py", "00_总控宪章与自动化引擎/scripts/screenplay_gold_engine.py"):
             for bad_j in FORBIDDEN_PULL_AND_TYPOS:
                 if bad_j in txt:
-                    errors.append(f"[禁用词/编号偏移/黑话代号残留] {rel_p} 包含 '{bad_j}'")
+                    errors.append(f"[禁用词/编号偏移/填空符残留] {rel_p} 包含 '{bad_j}'")
             for bad_ip in FORBIDDEN_IP_HARDCODES:
                 if bad_ip in txt:
-                    errors.append(f"[特定IP私有剧情硬编码残留] {rel_p} 包含 '{bad_ip}'")
+                    errors.append(f"[特定IP或虚构古建剧硬编码残留] {rel_p} 包含 '{bad_ip}'")
             found_trad = sorted(set(ch for ch in txt if ch in FORBIDDEN_TRADITIONAL_CHARS))
             if found_trad:
                 errors.append(f"[繁体字混杂残留] {rel_p} 包含繁体字 {found_trad}")
@@ -250,7 +249,7 @@ def main():
         for e in errors:
             print("ERROR:", e)
         sys.exit(1)
-    print(f"[ALL 10 HARD QUALITY GATES PASSED WITH ZERO ERRORS] Verified {len(actual_files)} pure universal workflow files (Dynamic Characters: {sorted(dynamic_chars)})!")
+    print(f"[ALL 10 HARD QUALITY GATES PASSED WITH ZERO ERRORS] Verified {len(actual_files)} unique, pure universal workflow files (Dynamic Roles: {sorted(dynamic_chars)})!")
 
 if __name__ == "__main__":
     main()
